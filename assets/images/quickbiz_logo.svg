@@ -1,0 +1,18 @@
+<svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg_grad" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2D62ED"/>
+      <stop offset="1" stop-color="#5E8BFF"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Apple-inspired Squircle Background -->
+  <path d="M100 0C175 0 200 25 200 100C200 175 175 200 100 200C25 200 0 175 0 100C0 25 25 0 100 0Z" fill="url(#bg_grad)"/>
+  
+  <!-- Google-inspired Modern Geometric Arrows -->
+  <!-- Income Arrow (Solid White for prominence) -->
+  <path d="M80 140V60L55 85" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Expense Arrow (Semi-transparent for visual hierarchy) -->
+  <path d="M120 60V140L145 115" stroke="white" stroke-width="18" stroke-opacity="0.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
