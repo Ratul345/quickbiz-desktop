@@ -299,7 +299,7 @@ impl App {
         let maintenance = self.settings.maintenance_mode.unwrap_or(false);
         let update = self
             .settings
-            .latest_version
+            .windows_version
             .as_deref()
             .filter(|v| is_newer_version(v, config::APP_VERSION))
             .map(|v| v.to_string());

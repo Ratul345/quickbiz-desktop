@@ -212,7 +212,7 @@ impl Client {
     }
 
     pub fn settings(&self) -> Res<Settings> {
-        let rows: Vec<Settings> = self.get_json("settings?id=eq.appConfig&select=*", None)?;
+        let rows: Vec<Settings> = self.get_json(&format!("settings?id=eq.appConfig&select={SETTINGS_COLUMNS}"), None)?;
         Ok(rows.into_iter().next().unwrap_or_default())
     }
 

@@ -165,16 +165,18 @@ pub struct StockMovement {
     pub created_by_name: Option<String>,
 }
 
-/// Public app settings row (maintenance flag, latest version, download link, notes).
+/// The public bits of the app settings row: the maintenance flag and the live *Windows* release.
+/// (The Android release fields in the same row belong to the phone app and are never used here.)
 #[derive(Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub maintenance_mode: Option<bool>,
-    pub latest_version: Option<String>,
-    pub download_url: Option<String>,
-    pub changelog: Option<String>,
-    pub force_update: Option<bool>,
+    pub windows_version: Option<String>,
 }
+
+/// The columns the app may read. The settings table is readable column by column only,
+/// so asking for `*` is refused by the server.
+pub const SETTINGS_COLUMNS: &str = "maintenanceMode,windowsVersion";
 
 /// "1.10.0" is newer than "1.9.0" (compared number by number, like the mobile app).
 pub fn is_newer_version(latest: &str, current: &str) -> bool {
@@ -211,6 +213,14 @@ mod tests {
         assert!(!is_newer_version("1.5.1", "1.5.1"));
         assert!(!is_newer_version("", "1.0.0"));
         assert!(is_newer_version("v2.0", "1.9.9"));
+    }
+
+    #[test]
+    fn settings_read_windows_fields_only() {
+        let s: Settings = serde_json::from_str(r#"{"maintenanceMode":true,"windowsVersion":"1.0.0","latestVersion":"1.5.1"}"#).unwrap();
+        assert_eq!(s.maintenance_mode, Some(true));
+        assert_eq!(s.windows_version.as_deref(), Some("1.0.0"));
+        assert!(!SETTINGS_COLUMNS.contains('*') && !SETTINGS_COLUMNS.contains("latestVersion"));
     }
 
     #[test]
