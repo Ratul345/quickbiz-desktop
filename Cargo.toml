@@ -1,6 +1,6 @@
 [package]
 name = "quickbiz-desktop"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "QuickBiz for Windows: native desktop app for income, expenses, inventory and reports"
 publish = false
