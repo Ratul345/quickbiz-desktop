@@ -3,8 +3,10 @@
 
 pub const SUPABASE_URL: &str = "https://mbdcyvgwoikbdrsdcflq.supabase.co";
 pub const SUPABASE_KEY: &str = "sb_publishable_gdZm_EWXsNuwV4V12nKexQ_mmREMKCN";
-#[allow(dead_code)]
 pub const WEB_URL: &str = "https://quickbiz.vercel.app";
+pub const PRIVACY_URL: &str = "https://quickbiz.vercel.app/privacy";
+/// Opens the QuickBiz page in the Microsoft Store app.
+pub const STORE_URL: &str = "ms-windows-store://pdp/?ProductId=9PP755N6HGN4";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// CI build number baked in at compile time (0 for local builds).

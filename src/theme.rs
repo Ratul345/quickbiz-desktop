@@ -27,6 +27,71 @@ pub const RED_HOVER: Color32 = Color32::from_rgb(0xC2, 0x26, 0x26);
 pub const RED_SOFT: Color32 = Color32::from_rgb(0xFD, 0xEC, 0xEC);
 pub const AMBER: Color32 = Color32::from_rgb(0xB4, 0x74, 0x0B);
 pub const AMBER_SOFT: Color32 = Color32::from_rgb(0xFE, 0xF4, 0xDC);
+pub const BLUE: Color32 = Color32::from_rgb(0x3B, 0x82, 0xF6);
+pub const BLUE_SOFT: Color32 = Color32::from_rgb(0xE8, 0xF1, 0xFF);
+pub const GOLD: Color32 = Color32::from_rgb(0xDA, 0xA5, 0x20);
+pub const GOLD_SOFT: Color32 = Color32::from_rgb(0xFF, 0xF6, 0xD6);
+pub const WARN: Color32 = Color32::from_rgb(0xF5, 0x9E, 0x0B);
+
+/// Mixes `c` into white: `t = 0.1` gives the soft tint the mobile app uses behind icons.
+pub fn tint(c: Color32, t: f32) -> Color32 {
+    let m = |a: u8| (255.0 + (a as f32 - 255.0) * t).round() as u8;
+    Color32::from_rgb(m(c.r()), m(c.g()), m(c.b()))
+}
+
+/// Lightens a colour towards white by `t` (0 = unchanged, 1 = white). Used for shapes on the blue card.
+pub fn tint_on(c: Color32, t: f32) -> Color32 {
+    let m = |a: u8| (a as f32 + (255.0 - a as f32) * t).round() as u8;
+    Color32::from_rgb(m(c.r()), m(c.g()), m(c.b()))
+}
+
+/// Segoe MDL2 Assets glyphs (ships with Windows 10 and 11).
+pub mod ic {
+    pub const MENU: &str = "\u{E700}";
+    pub const HOME: &str = "\u{E80F}";
+    pub const CARD: &str = "\u{E8C7}";
+    pub const BOX: &str = "\u{E7B8}";
+    pub const CHART: &str = "\u{E9D2}";
+    pub const PERSON: &str = "\u{E77B}";
+    pub const PEOPLE: &str = "\u{E716}";
+    pub const BELL: &str = "\u{EA8F}";
+    pub const HELP: &str = "\u{E897}";
+    pub const LOCK: &str = "\u{E72E}";
+    pub const GLOBE: &str = "\u{E774}";
+    pub const SHIELD: &str = "\u{EA18}";
+    pub const INFO: &str = "\u{E946}";
+    pub const BULB: &str = "\u{EA80}";
+    pub const REFRESH: &str = "\u{E72C}";
+    pub const SEARCH: &str = "\u{E721}";
+    pub const ADD: &str = "\u{E710}";
+    pub const REMOVE: &str = "\u{E738}";
+    pub const DELETE: &str = "\u{E74D}";
+    pub const EDIT: &str = "\u{E70F}";
+    pub const CAMERA: &str = "\u{E722}";
+    pub const SHOP: &str = "\u{E719}";
+    pub const POWER: &str = "\u{E7E8}";
+    pub const CHECK_CIRCLE: &str = "\u{E930}";
+    pub const CHECK: &str = "\u{E73E}";
+    pub const WARNING: &str = "\u{E7BA}";
+    pub const EYE: &str = "\u{E7B3}";
+    pub const EYE_OFF: &str = "\u{ED1A}";
+    pub const UP: &str = "\u{E74A}";
+    pub const DOWN: &str = "\u{E74B}";
+    pub const STAR: &str = "\u{E735}";
+    pub const CHEVRON_LEFT: &str = "\u{E76B}";
+    pub const CHEVRON_RIGHT: &str = "\u{E76C}";
+    pub const BACK: &str = "\u{E72B}";
+    pub const CLOSE: &str = "\u{E711}";
+    pub const MAIL: &str = "\u{E715}";
+    pub const SEND: &str = "\u{E724}";
+    pub const MESSAGE: &str = "\u{E8BD}";
+    pub const HEART: &str = "\u{EB51}";
+    pub const TAG: &str = "\u{E8EC}";
+    pub const CALENDAR: &str = "\u{E787}";
+    pub const WRENCH: &str = "\u{E90F}";
+    pub const MONEY: &str = "\u{E8EF}";
+    pub const UPLOAD: &str = "\u{E898}";
+}
 
 static ICONS_OK: AtomicBool = AtomicBool::new(false);
 

@@ -1,4 +1,5 @@
-use crate::app::{card, heading, stat, App};
+use crate::app::App;
+use crate::ui::{self, card, stat};
 use crate::theme::*;
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use eframe::egui::{self, Color32, CornerRadius, RichText, Sense, Stroke};
@@ -47,13 +48,14 @@ fn buckets(period: Period, today: NaiveDate) -> Vec<(String, NaiveDate, NaiveDat
 }
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
-    heading(ui, "Reports");
-    ui.horizontal(|ui| {
-        ui.selectable_value(&mut app.reports.period, Period::Week, "Last 7 days");
-        ui.selectable_value(&mut app.reports.period, Period::Month, "Last 30 days");
-        ui.selectable_value(&mut app.reports.period, Period::Year, "Last 12 months");
-    });
-    ui.add_space(8.0);
+    if app.business() && !app.perms().can_view_reports {
+        card(ui, |ui| {
+            ui::empty_state(ui, ic::LOCK, "No access to reports", "The business owner has not given you permission to see reports.");
+        });
+        return;
+    }
+    ui::segmented(ui, &mut app.reports.period, &[(Period::Week, "Last 7 days"), (Period::Month, "Last 30 days"), (Period::Year, "Last 12 months")]);
+    ui.add_space(12.0);
 
     let today = Local::now().date_naive();
     let bs = buckets(app.reports.period, today);
@@ -78,20 +80,23 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let expense: f64 = data.iter().map(|d| d.1).sum();
 
     ui.columns(3, |c| {
-        stat(&mut c[0], "Income", &app.money(income), GREEN);
-        stat(&mut c[1], "Expenses", &app.money(expense), RED);
-        stat(&mut c[2], "Profit", &app.money(income - expense), if income >= expense { BRAND } else { RED });
+        stat(&mut c[0], ic::DOWN, "Income", &app.money(income), GREEN);
+        stat(&mut c[1], ic::UP, "Expenses", &app.money(expense), RED);
+        stat(&mut c[2], ic::MONEY, "Profit", &app.money(income - expense), if income >= expense { BRAND } else { RED });
     });
     ui.add_space(12.0);
 
     card(ui, |ui| {
-        ui.label(RichText::new("Income and expenses").font(bold_font(16.0)));
         ui.horizontal(|ui| {
-            ui.colored_label(GREEN, "■ Income");
-            ui.colored_label(RED, "■ Expenses");
+            ui.label(RichText::new("Income vs expenses").font(bold_font(16.5)));
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui::pill(ui, "Expenses", RED, RED_SOFT);
+                ui::pill(ui, "Income", GREEN, GREEN_SOFT);
+            });
         });
+        ui.add_space(6.0);
         let max = data.iter().flat_map(|d| [d.0, d.1]).fold(0.0_f64, f64::max).max(1.0);
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 220.0), Sense::hover());
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 260.0), Sense::hover());
         let painter = ui.painter_at(rect);
         let plot = rect.shrink2(egui::vec2(4.0, 0.0)).with_max_y(rect.max.y - 20.0);
         painter.line_segment([plot.left_bottom(), plot.right_bottom()], Stroke::new(1.0_f32, LINE_STRONG));
@@ -105,7 +110,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 let h = (v / max) as f32 * (plot.height() - 6.0);
                 if h > 0.0 {
                     let r = egui::Rect::from_min_max(egui::pos2(cx + dx - bar / 2.0, plot.bottom() - h), egui::pos2(cx + dx + bar / 2.0, plot.bottom()));
-                    painter.rect_filled(r, CornerRadius::same(3), color);
+                    painter.rect_filled(r, CornerRadius { nw: 4, ne: 4, sw: 0, se: 0 }, color);
                 }
             }
             if i % show_every == 0 {
@@ -116,7 +121,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     ui.add_space(12.0);
 
     card(ui, |ui| {
-        ui.label(RichText::new("Where the money went").font(bold_font(16.0)));
+        ui.label(RichText::new("Where the money went").font(bold_font(16.5)));
         ui.add_space(4.0);
         let mut rows: Vec<_> = categories.into_iter().collect();
         rows.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -126,14 +131,15 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         for (name, amount) in rows.iter().take(8) {
             let share = if expense > 0.0 { (*amount / expense) as f32 } else { 0.0 };
             ui.horizontal(|ui| {
-                ui.label(name);
+                ui::icon_box(ui, ic::TAG, RED, 28.0);
+                ui.label(RichText::new(name).font(bold_font(14.0)));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(RichText::new(app.money(*amount)).color(MUTED));
                 });
             });
-            let (r, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 6.0), Sense::hover());
-            ui.painter().rect_filled(r, CornerRadius::same(3), SURFACE_MUTED);
-            ui.painter().rect_filled(r.with_max_x(r.left() + r.width() * share), CornerRadius::same(3), Color32::from_rgb(0xF0, 0x8A, 0x8A));
+            let (r, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 8.0), Sense::hover());
+            ui.painter().rect_filled(r, CornerRadius::same(4), SURFACE_MUTED);
+            ui.painter().rect_filled(r.with_max_x(r.left() + r.width() * share), CornerRadius::same(4), Color32::from_rgb(0xF0, 0x8A, 0x8A));
             ui.add_space(4.0);
         }
     });

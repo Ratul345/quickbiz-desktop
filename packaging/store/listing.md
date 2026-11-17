@@ -26,7 +26,12 @@ It opens fast, uses little memory and works with the same QuickBiz account you u
 QuickBiz is free to use. An internet connection is needed to sign in and to save your records.
 
 ## What's new in this version
-Leave blank for the first submission.
+A fresh new look, your full profile, and sales that fit your kind of business.
+
+• New look: matches the QuickBiz phone app, with a side menu you can fold to icons only, a new dashboard and a new sign-in screen.
+• Your profile on Windows: change your name, photo and currency, switch between Personal and Business, edit your business, invite employees and choose what they can do, and contact support.
+• Made for your business: Credit sale for shops, Order for restaurants, Job for services, Repair for mobile repair shops, and Customer owes for everyone else.
+• Collect what you're owed: record a payment when a customer pays later, and see who still owes you on the dashboard.
 
 ## Product features (one per line, up to 20)
 Dashboard with your balance, monthly totals and low-stock alerts

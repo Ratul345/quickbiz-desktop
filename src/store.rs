@@ -38,3 +38,36 @@ pub fn clear() {
         let _ = std::fs::remove_file(p);
     }
 }
+
+/// Small per-PC preferences (sidebar folded, balance hidden). Not secret.
+#[derive(Serialize, Deserialize, Clone, Default, PartialEq)]
+#[serde(default)]
+pub struct Prefs {
+    pub sidebar_collapsed: bool,
+    pub hide_balance: bool,
+    /// The app version whose "What's new" the user has already seen.
+    pub last_seen_version: String,
+}
+
+fn prefs_file() -> Option<PathBuf> {
+    let mut p = file()?;
+    p.set_file_name("prefs.json");
+    Some(p)
+}
+
+pub fn load_prefs() -> Prefs {
+    prefs_file()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or_default()
+}
+
+pub fn save_prefs(p: &Prefs) {
+    let Some(path) = prefs_file() else { return };
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if let Ok(text) = serde_json::to_string(p) {
+        let _ = std::fs::write(path, text);
+    }
+}

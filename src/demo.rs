@@ -11,7 +11,7 @@ use chrono::{Duration, Utc};
 use eframe::egui;
 use std::path::PathBuf;
 
-const SHOTS: [&str; 5] = ["01-sign-in", "02-dashboard", "03-finance", "04-inventory", "05-reports"];
+const SHOTS: [&str; 9] = ["01-sign-in", "02-dashboard", "03-finance", "04-inventory", "05-reports", "06-profile", "07-team", "08-sidebar-folded", "09-support"];
 /// Frames to let a screen settle before capturing it.
 const SETTLE: u32 = 30;
 
@@ -152,9 +152,32 @@ pub fn load(app: &mut App) {
         display_name: Some("Demo Owner".into()),
         business_name: Some("Demo Mobile Shop".into()),
         business_id: Some("demo-owner".into()),
+        business_owner_id: Some("demo-owner".into()),
+        business_category: Some("Mobile Repair".into()),
+        role: Some("owner".into()),
+        tier: Some("gold".into()),
+        is_verified: Some(true),
         currency_code: Some("BDT".into()),
         ..Default::default()
     };
+    app.employees = vec![
+        Employee { uid: "demo-e1".into(), email: Some("staff.one@example.com".into()), display_name: Some("Staff One".into()), photo_url: None, permissions: Some(Permissions::default()) },
+        Employee {
+            uid: "demo-e2".into(),
+            email: Some("staff.two@example.com".into()),
+            display_name: Some("Staff Two".into()),
+            photo_url: None,
+            permissions: Some(Permissions { can_manage_transactions: true, can_view_reports: true, ..Default::default() }),
+        },
+    ];
+    app.tickets = vec![Ticket {
+        id: "demo-t1".into(),
+        subject: "[Feature request] Print receipts".into(),
+        message: "It would help to print a receipt for each sale.".into(),
+        reply: Some("Thanks for the idea! We have added it to our list.".into()),
+        status: Some("replied".into()),
+        created_at: Some(day(3, 2)),
+    }];
     app.mode = "business".into();
     app.txs = transactions();
     app.products = products();
@@ -194,9 +217,21 @@ fn setup(app: &mut App, step: usize) {
             app.moves_for = Some(id);
             app.moves = movements();
         }
-        _ => {
+        4 => {
+            app.inventory.selected = None;
             app.tab = Tab::Reports;
             app.reports.period = Period::Month;
+        }
+        5 => app.tab = Tab::Profile,
+        6 => app.tab = Tab::Team,
+        7 => {
+            app.tab = Tab::Dashboard;
+            app.prefs.sidebar_collapsed = true;
+        }
+        _ => {
+            app.prefs.sidebar_collapsed = false;
+            app.tab = Tab::Support;
+            app.support.tab = 1;
         }
     }
 }

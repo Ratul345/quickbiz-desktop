@@ -10,6 +10,7 @@ use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::io::Read;
 use std::time::Duration;
 
 pub type Res<T> = Result<T, String>;
@@ -116,13 +117,13 @@ impl Client {
 
     /// Creates an account. Returns `Ok(Some(session))` when signed in straight away, `Ok(None)` when the
     /// email must be confirmed first. A database trigger creates the profile row.
-    pub fn sign_up(&self, name: &str, email: &str, password: &str) -> Res<Option<Session>> {
-        let url = format!("{SUPABASE_URL}/auth/v1/signup");
+    pub fn sign_up(&self, name: &str, email: &str, password: &str, currency: &str) -> Res<Option<Session>> {
+        let url = format!("{SUPABASE_URL}/auth/v1/signup?redirect_to={}", enc("https://quickbiz.vercel.app/email-confirmed"));
         let resp = self
             .agent
             .post(&url)
             .set("apikey", SUPABASE_KEY)
-            .send_json(json!({ "email": email, "password": password, "data": { "displayName": name } }))
+            .send_json(json!({ "email": email, "password": password, "data": { "displayName": name, "currencyCode": currency } }))
             .map_err(describe)?;
         let v: Value = resp.into_json().map_err(|e| e.to_string())?;
         if v.get("access_token").is_some() {
@@ -130,6 +131,13 @@ impl Client {
         } else {
             Ok(None)
         }
+    }
+
+    /// Emails a link to choose a new password (opens the QuickBiz website).
+    pub fn reset_password(&self, email: &str) -> Res<()> {
+        let url = format!("{SUPABASE_URL}/auth/v1/recover?redirect_to={}", enc("https://quickbiz.vercel.app/reset-password"));
+        self.agent.post(&url).set("apikey", SUPABASE_KEY).send_json(json!({ "email": email })).map_err(describe)?;
+        Ok(())
     }
 
     fn refresh(&self) -> Res<()> {
@@ -204,6 +212,39 @@ impl Client {
         Ok(resp.into_json().unwrap_or(Value::Null))
     }
 
+    fn patch_json(&self, path_and_query: &str, body: &Value) -> Res<()> {
+        let url = format!("{SUPABASE_URL}/rest/v1/{path_and_query}");
+        self.authed(|a, t| {
+            a.request("PATCH", &url)
+                .set("apikey", SUPABASE_KEY)
+                .set("Authorization", &format!("Bearer {t}"))
+                .set("Prefer", "return=minimal")
+                .send_json(body.clone())
+        })?;
+        Ok(())
+    }
+
+    /// Calls a database function and returns what it gives back.
+    fn rpc(&self, name: &str, body: &Value) -> Res<Value> {
+        let url = format!("{SUPABASE_URL}/rest/v1/rpc/{name}");
+        let resp = self.authed(|a, t| {
+            a.post(&url).set("apikey", SUPABASE_KEY).set("Authorization", &format!("Bearer {t}")).send_json(body.clone())
+        })?;
+        let text = resp.into_string().map_err(|e| e.to_string())?;
+        if text.trim().is_empty() {
+            return Ok(Value::Null);
+        }
+        serde_json::from_str(&text).map_err(|e| e.to_string())
+    }
+
+    fn rpc_rows<T: DeserializeOwned>(&self, name: &str, body: &Value) -> Res<Vec<T>> {
+        match self.rpc(name, body)? {
+            Value::Null => Ok(vec![]),
+            Value::Array(a) => serde_json::from_value(Value::Array(a)).map_err(|e| e.to_string()),
+            one => Ok(vec![serde_json::from_value(one).map_err(|e| e.to_string())?]),
+        }
+    }
+
     // ---- reads ----------------------------------------------------------
 
     pub fn profile(&self, uid: &str) -> Res<Profile> {
@@ -251,6 +292,11 @@ impl Client {
         self.post_json("rpc/add_transaction", &json!({ "p": p })).map(|_| ())
     }
 
+    /// Changes fields of an existing entry (used to record a later payment).
+    pub fn update_transaction(&self, id: &str, values: Value) -> Res<()> {
+        self.patch_json(&format!("transactions?id=eq.{}", enc(id)), &values)
+    }
+
     pub fn delete_transaction(&self, id: &str) -> Res<()> {
         self.post_json("rpc/delete_transaction", &json!({ "p_id": id })).map(|_| ())
     }
@@ -277,6 +323,102 @@ impl Client {
             }),
         )
         .map(|_| ())
+    }
+}
+
+impl Client {
+    // ---- profile & business -------------------------------------------
+
+    /// Updates your own profile row. The database ignores fields you are not allowed to change.
+    pub fn update_me(&self, uid: &str, values: Value) -> Res<()> {
+        self.patch_json(&format!("users?uid=eq.{}", enc(uid)), &values)
+    }
+
+    pub fn delete_business(&self) -> Res<()> {
+        self.rpc("delete_business", &json!({})).map(|_| ())
+    }
+
+    pub fn leave_business(&self) -> Res<()> {
+        self.rpc("leave_business", &json!({})).map(|_| ())
+    }
+
+    // ---- team ------------------------------------------------------------
+
+    pub fn employees(&self, owner: &str) -> Res<Vec<Employee>> {
+        self.get_json(
+            &format!("users?businessOwnerId=eq.{}&role=eq.employee&select=uid,email,displayName,photoURL,permissions&order=displayName.asc", enc(owner)),
+            None,
+        )
+    }
+
+    pub fn find_user(&self, email: &str) -> Res<Option<FoundUser>> {
+        Ok(self.rpc_rows::<FoundUser>("find_user_by_email", &json!({ "p_email": email.trim().to_lowercase() }))?.into_iter().next())
+    }
+
+    pub fn invite(&self, employee_uid: &str, business_name: &str) -> Res<()> {
+        self.rpc("add_employee", &json!({ "p_employee_uid": employee_uid, "p_business_name": business_name })).map(|_| ())
+    }
+
+    pub fn set_permissions(&self, employee_uid: &str, p: &Permissions) -> Res<()> {
+        self.rpc("update_employee_permissions", &json!({ "p_employee_uid": employee_uid, "p_permissions": p })).map(|_| ())
+    }
+
+    pub fn promote(&self, employee_uid: &str) -> Res<()> {
+        self.rpc("promote_employee", &json!({ "p_employee_uid": employee_uid })).map(|_| ())
+    }
+
+    pub fn remove_employee(&self, employee_uid: &str) -> Res<()> {
+        self.rpc("remove_employee", &json!({ "p_employee_uid": employee_uid })).map(|_| ())
+    }
+
+    pub fn my_invites(&self) -> Res<Vec<TeamInvite>> {
+        self.rpc_rows("my_team_invites", &json!({}))
+    }
+
+    pub fn answer_invite(&self, id: &str, accept: bool) -> Res<()> {
+        self.rpc("respond_team_invite", &json!({ "p_id": id, "p_accept": accept })).map(|_| ())
+    }
+
+    // ---- support ---------------------------------------------------------
+
+    pub fn tickets(&self, uid: &str) -> Res<Vec<Ticket>> {
+        self.get_json(&format!("support_messages?userId=eq.{}&select=id,subject,message,reply,status,createdAt&order=createdAt.desc", enc(uid)), None)
+    }
+
+    pub fn send_ticket(&self, row: Value) -> Res<()> {
+        self.post_json("support_messages", &row).map(|_| ())
+    }
+
+    pub fn reply_ticket(&self, id: &str, message: &str) -> Res<()> {
+        self.patch_json(
+            &format!("support_messages?id=eq.{}", enc(id)),
+            &json!({ "message": message, "status": "pending", "reply": "", "updatedAt": chrono::Utc::now().to_rfc3339() }),
+        )
+    }
+
+    // ---- pictures --------------------------------------------------------
+
+    /// Uploads a JPEG to your own folder in the public `media` bucket and returns its web address.
+    pub fn upload_image(&self, uid: &str, folder: &str, jpeg: &[u8]) -> Res<String> {
+        let path = format!("{uid}/{folder}_{}.jpg", chrono::Utc::now().timestamp_millis());
+        let url = format!("{SUPABASE_URL}/storage/v1/object/media/{path}");
+        self.authed(|a, t| {
+            a.post(&url)
+                .set("apikey", SUPABASE_KEY)
+                .set("Authorization", &format!("Bearer {t}"))
+                .set("Content-Type", "image/jpeg")
+                .set("x-upsert", "true")
+                .send_bytes(jpeg)
+        })?;
+        Ok(format!("{SUPABASE_URL}/storage/v1/object/public/media/{path}"))
+    }
+
+    /// Downloads a picture (profile photos and logos are public files).
+    pub fn download(&self, url: &str) -> Res<Vec<u8>> {
+        let resp = self.agent.get(url).call().map_err(describe)?;
+        let mut buf = Vec::new();
+        resp.into_reader().take(8 * 1024 * 1024).read_to_end(&mut buf).map_err(|e| e.to_string())?;
+        Ok(buf)
     }
 }
 

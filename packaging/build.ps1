@@ -11,8 +11,8 @@
 #>
 param(
   [ValidateSet('Installer', 'Msix', 'All')] [string]$Target = 'All',
-  [string]$IdentityName = 'InfoSparkLabs.QuickBiz',
-  [string]$Publisher = 'CN=00000000-0000-0000-0000-000000000000',
+  [string]$IdentityName = 'InfoSparkLabs.quickbiz',
+  [string]$Publisher = 'CN=07CCFE54-1115-4AED-91AA-3FA591AD79CB',
   [string]$PublisherDisplayName = 'InfoSpark Labs',
   [string]$SignPfx,
   [string]$SignPassword
@@ -69,10 +69,11 @@ if ($Target -in 'Msix', 'All') {
 
   # Package logos are rendered from assets/images/quickbiz_logo.svg by render-logos.ps1 (run it after changing the logo).
   $logos = Join-Path $PSScriptRoot 'msix\Assets'
-  foreach ($f in 'StoreLogo.png', 'Square44x44Logo.png', 'Square150x150Logo.png', 'Wide310x150Logo.png') {
+  foreach ($f in 'StoreLogo.png', 'Square44x44Logo.png', 'Square150x150Logo.png', 'Wide310x150Logo.png', 'Square44x44Logo.targetsize-48_altform-unplated.png') {
     if (-not (Test-Path (Join-Path $logos $f))) { throw "$f is missing. Run packaging\render-logos.ps1 first." }
-    Copy-Item (Join-Path $logos $f) (Join-Path $stage 'Assets') -Force
   }
+  # All sizes, including the "unplated" taskbar icons (shown without a coloured square behind them).
+  Copy-Item (Join-Path $logos '*.png') (Join-Path $stage 'Assets') -Force
 
   # Store versions are x.y.z.0 (the Store reserves the last part).
   $parts = @(($version -split '[-+]')[0].Split('.'))
@@ -84,6 +85,14 @@ if ($Target -in 'Msix', 'All') {
     Replace('@PUBLISHER_DISPLAY@', $PublisherDisplayName).
     Replace('@VERSION@', $msixVersion) |
     Set-Content (Join-Path $stage 'AppxManifest.xml') -Encoding UTF8
+
+  # Index of the icon sizes, so Windows can pick the right taskbar icon (resources.pri).
+  $makepri = Find-Tool 'makepri' @('C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makepri.exe')
+  $priConfig = Join-Path $dist 'priconfig.xml'
+  & $makepri createconfig /cf $priConfig /dq en-US /pv 10.0.0 /o | Out-Null
+  if ($LASTEXITCODE) { throw 'makepri createconfig failed' }
+  & $makepri new /pr $stage /cf $priConfig /mn (Join-Path $stage 'AppxManifest.xml') /of (Join-Path $stage 'resources.pri') /o | Out-Null
+  if ($LASTEXITCODE) { throw 'makepri new failed' }
 
   $msix = Join-Path $dist "QuickBiz-$msixVersion.msix"
   if (Test-Path $msix) { Remove-Item $msix -Force }

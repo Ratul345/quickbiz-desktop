@@ -7,8 +7,10 @@ mod config;
 mod demo;
 mod logo;
 mod model;
+mod pictures;
 mod store;
 mod theme;
+mod ui;
 mod views;
 
 use eframe::egui;

@@ -54,6 +54,13 @@ foreach ($s in 44, 50, 150) { Render $msixOut "icon-$s.png" $s $s (Square $s) }
 Move-Item (Join-Path $msixOut 'icon-44.png') (Join-Path $msixOut 'Square44x44Logo.png') -Force
 Move-Item (Join-Path $msixOut 'icon-50.png') (Join-Path $msixOut 'StoreLogo.png') -Force
 Move-Item (Join-Path $msixOut 'icon-150.png') (Join-Path $msixOut 'Square150x150Logo.png') -Force
+# Taskbar, Start list and title bar icons. The "unplated" versions tell Windows to show the
+# rounded logo as it is, instead of putting it on a solid square of the tile colour.
+foreach ($s in 16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256) {
+  Render $msixOut "Square44x44Logo.targetsize-$s.png" $s $s (Square $s)
+  Copy-Item (Join-Path $msixOut "Square44x44Logo.targetsize-$s.png") (Join-Path $msixOut "Square44x44Logo.targetsize-${s}_altform-unplated.png") -Force
+  Copy-Item (Join-Path $msixOut "Square44x44Logo.targetsize-$s.png") (Join-Path $msixOut "Square44x44Logo.targetsize-${s}_altform-lightunplated.png") -Force
+}
 # Wide tile: icon centred on the brand colour
 Render $msixOut 'Wide310x150Logo.png' 310 150 (Square 110) $brand
 # Store listing: app tile icons
